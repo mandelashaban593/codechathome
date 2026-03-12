@@ -34,6 +34,10 @@ Start a game like:
 
 🎮 Asphalt 9: Legends
 
+🎮 Microsoft Flight Simulator
+
+🎮 Farming Simulator 22
+
 Then tilt the phone.
 
 Commands received:
