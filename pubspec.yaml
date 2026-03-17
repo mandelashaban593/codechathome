@@ -1,43 +1,4 @@
-name: gal
-description: "GAL Universal Game Controller"
 
-# Prevent accidental publishing
-publish_to: 'none'
-
-# Versioning
-version: 1.0.0+1
-
-# Dart SDK
-environment:
-  sdk: ">=3.0.0 <4.0.0"
-
-# Dependencies
-dependencies:
-  flutter:
-    sdk: flutter
-
-  # Bluetooth support for Android/iOS
-  flutter_blue_plus: ^1.32.7
-  flutter_bluetooth_serial: ^0.4.0
-  # State management
-  provider: ^6.1.2
-
-  # iOS style icons
-  cupertino_icons: ^1.0.8
-
-  # Open websites (Web, Android, iOS)
-  url_launcher: ^6.3.0
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-
-  # Recommended Flutter lints
-  flutter_lints: ^6.0.0
-
-# Flutter-specific configuration
-flutter:
-  uses-material-design: true
 
   # If you want to add custom assets, uncomment below
   # assets:
@@ -50,4 +11,24 @@ flutter:
   #     fonts:
   #       - asset: fonts/Schyler-Regular.ttf
 #       - asset: fonts/Schyler-Italic.ttf
-#         style: italic
+#         style: italicname: gal
+name: gal_controller
+description: GAL Remote Controller
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

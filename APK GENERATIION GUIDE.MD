@@ -1,5 +1,5 @@
 ## APK WOKING GENERATING COMMAND IS 
-flutter build apk --release --split-per-
+flutter build apk --release --split-per-abi
 
 
 ## APK WOKING GENERATING COMMAND IS 

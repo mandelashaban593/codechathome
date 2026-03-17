@@ -18,7 +18,7 @@ samples, guidance on mobile development, and a full API reference.
 
 
 ## APK WOKING GENERATING COMMAND IS 
-flutter build apk --release --split-per-
+flutter build apk --release --split-per-abi
 
 
 ## APK WOKING GENERATING COMMAND IS 
@@ -46,3 +46,30 @@ flutter build appbundle --release
 D:\sites\flutter_projects\gal>flutter build appbundle --release
 Running Gradle task 'bundleRelease'...                            748.8s
 √ Built build\app\outputs\bundle\release\app-release.aab (36.6MB)
+
+
+
+PROJECT STRUCTURE.> Could not read workspace metadata from C:\Users\user\.gradle\caches\8.14\transforms\34e9e240dc85f40ff3529429a7b2b86d\metadata.bin
+
+gal/
+├── lib/
+│   ├── main.dart
+│   ├── screens/
+│   │   ├── home_screen.dart
+│   │   ├── bluetooth_screen.dart
+│   │   └── remote_screen.dart
+│   ├── services/
+│   │   ├── bluetooth_service.dart
+│   │   ├── bluetooth_service_android.dart
+│   │   └── bluetooth_service_stub.dart
+│   └── models/
+│       └── device_info.dart
+├── pubspec.yaml
+
+HOW THE APPLICATION WORKS
+
+Your Flutter remote controller app (phone/web) sends keyboard commands to the Windows PC through the small server. The Windows server then uses a library like PyAutoGUI to simulate keyboard presses on the computer. You just need to enter the ip address of the  device on the app to controll the game on that device
+
+So the controller does not control games directly — it pretends to be a keyboard.
+Any Windows game that supports keyboard input can be controlled.
+

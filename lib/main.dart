@@ -1,28 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'screens/home_screen.dart';
-import 'services/bluetooth_controller.dart';
+import 'screens/connect_screen.dart';
 
 void main() {
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => BluetoothController()),
-      ],
-      child: const GameApp(),
-    ),
-  );
+  runApp(GALRemoteApp());
 }
 
-class GameApp extends StatelessWidget {
-  const GameApp({super.key});
-
+class GALRemoteApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Universal Game Controller',
+      title: "GAL Remote",
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const HomeScreen(),
+      home: ConnectScreen(),
     );
   }
 }
