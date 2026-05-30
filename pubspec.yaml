@@ -1,35 +1,23 @@
+name: edoctorug
 
-
-  # If you want to add custom assets, uncomment below
-  # assets:
-  #   - assets/images/
-  #   - assets/sounds/
-
-  # Fonts example (optional)
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-#       - asset: fonts/Schyler-Italic.ttf
-#         style: italicname: gal
-name: gal_controller
-description: GAL Remote Controller
-publish_to: 'none'
-
-version: 1.0.0+1
+version: 1.0.1+2  # version_name+build_number (required for Play Store)
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
-  url_launcher: ^6.2.5
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
+  http: ^1.6.0
+  provider: ^6.0.5
+  web_socket_channel: ^2.4.0
+  shared_preferences: ^2.5.5
+  flutter_html: ^3.0.0-beta.2
+
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/images/
