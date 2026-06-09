@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 
-import '../dashboard/student_dashboard.dart';
-import '../dashboard/mentor_dashboard.dart';
+import '../student/student_dashboard.dart';
+import '../mentor/mentor_dashboard.dart';
 import '../dashboard/admin_dashboard.dart';
 
 import '../auth/register_screen.dart';

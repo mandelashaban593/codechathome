@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import '../../services/api_service.dart';
 import '../../widgets/chat_bubble.dart';
+import 'chat_controller.dart';
+import 'chat_header.dart';
+import 'chat_input.dart';
+import 'chat_models.dart';
 
 class ChatScreen extends StatefulWidget {
   final int roomId;
@@ -18,88 +22,151 @@ class ChatScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  List messages = [];
-  int offset = 0;
+  final controller = ChatController();
 
-  TextEditingController msg = TextEditingController();
-  Timer? timer;
+  final TextEditingController msg = TextEditingController();
+  final ScrollController scrollController = ScrollController();
+
+  bool isOnline = false;
+  String lastSeen = "";
 
   @override
   void initState() {
     super.initState();
-    load();
-
-    // 🔁 Poll every 2 sec
-    timer = Timer.periodic(const Duration(seconds: 2), (_) => load());
+    initChat();
   }
 
-  @override
-  void dispose() {
-    timer?.cancel();
-    super.dispose();
+  // ================= INIT =================
+  Future<void> initChat() async {
+    await loadMessages();
+
+    controller.startPolling(widget.roomId, () async {
+      await loadMessages();
+    });
+
+    controller.markAsRead(widget.roomId, widget.username);
+
+    await loadStatus();
   }
 
   // ================= LOAD MESSAGES =================
-  load() async {
+  Future<void> loadMessages() async {
     try {
-      var res = await ApiService.post("chat/receive/", {
-        "id": widget.roomId.toString(),
-        "offset": offset.toString()
+      await controller.loadMessages(widget.roomId);
+
+      setState(() {});
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        scrollToBottom();
       });
 
-      var data = jsonDecode(res.body);
-
-      if (data["messages"] != null && data["messages"].isNotEmpty) {
-        setState(() {
-          for (var m in data["messages"]) {
-            messages.add(m);
-          }
-          offset = messages.last["id"];
-        });
-      }
+      print("Messages loaded: ${controller.messages.length}");
     } catch (e) {
-      debugPrint("Chat load error: $e");
+      print("LOAD ERROR: $e");
     }
   }
 
-  // ================= SEND =================
-  send() async {
-    if (msg.text.trim().isEmpty) return;
+  void scrollToBottom() {
+    if (scrollController.hasClients) {
+      scrollController.jumpTo(scrollController.position.maxScrollExtent);
+    }
+  }
 
-    final text = msg.text.trim();
+  void scrollUp() {
+    if (scrollController.hasClients) {
+      scrollController.animateTo(
+        scrollController.offset - 120,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
+  void scrollDown() {
+    if (scrollController.hasClients) {
+      scrollController.animateTo(
+        scrollController.offset + 120,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  // ================= STATUS =================
+  Future<void> loadStatus() async {
     try {
-      await ApiService.post("chat/send/", {
-        "chat_room_id": widget.roomId.toString(),
-        "message": text,
-        "username": widget.username
-      });
+      final res = await controller.getStatus(widget.mentorUsername);
+
+      final decoded = jsonDecode(res.body);
 
       setState(() {
-        messages.add({
-          "message": text,
-          "username": widget.username,
-          "timestamp": "now"
-        });
+        isOnline = decoded["is_online"] ?? false;
+        lastSeen = decoded["last_seen"] ?? "";
       });
+    } catch (e) {
+      print("STATUS ERROR: $e");
+    }
+  }
+
+  // ================= SEND MESSAGE =================
+  Future<void> send() async {
+    final text = msg.text.trim();
+    if (text.isEmpty) return;
+
+    print("SEND: $text | ROOM: ${widget.roomId}");
+
+    try {
+      await controller.sendMessage(
+        widget.roomId,
+        text,
+        widget.username,
+      );
 
       msg.clear();
+      await loadMessages();
     } catch (e) {
-      debugPrint("Send error: $e");
+      print("SEND ERROR: $e");
+    }
+  }
+
+  // ================= KEYBOARD HANDLER =================
+  void handleKey(RawKeyEvent event) {
+    if (event is RawKeyDownEvent) {
+      final key = event.logicalKey;
+
+      if (key == LogicalKeyboardKey.enter) {
+        send();
+      }
+
+      if (key == LogicalKeyboardKey.arrowUp) {
+        scrollUp();
+      }
+
+      if (key == LogicalKeyboardKey.arrowDown) {
+        scrollDown();
+      }
     }
   }
 
   // ================= MESSAGE UI =================
-  Widget buildMessage(m) {
+  Widget buildMessage(ChatMessage m) {
     return ChatBubble(
-      message: m["message"],
-      isMe: m["username"] == widget.username,
-      time: m["timestamp"] ?? "",
+      message: m.message,
+      isMe: m.username == widget.username,
+      time: m.timestamp,
     );
+  }
+
+  @override
+  void dispose() {
+    controller.stopPolling();
+    msg.dispose();
+    scrollController.dispose();
+    super.dispose();
   }
 
   // ================= UI =================
@@ -109,20 +176,33 @@ class _ChatScreenState extends State<ChatScreen> {
       backgroundColor: Colors.grey.shade200,
 
       appBar: AppBar(
-        title: Text("Chat with ${widget.mentorUsername}"),
+        title: ChatHeader(
+          title: widget.mentorUsername,
+          isOnline: isOnline,
+          lastSeen: lastSeen,
+        ),
         backgroundColor: Colors.blue.shade800,
       ),
 
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(10),
-              itemCount: messages.length,
-              itemBuilder: (context, i) => buildMessage(messages[i]),
+            child: RawKeyboardListener(
+              focusNode: FocusNode(),
+              autofocus: true,
+              onKey: handleKey,
+
+              child: ListView.builder(
+                controller: scrollController,
+                padding: const EdgeInsets.all(10),
+                itemCount: controller.messages.length,
+                itemBuilder: (_, i) =>
+                    buildMessage(controller.messages[i]),
+              ),
             ),
           ),
 
+          // ================= INPUT =================
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             color: Colors.white,
@@ -131,12 +211,14 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: msg,
+                    onSubmitted: (_) => send(),
                     decoration: const InputDecoration(
                       hintText: "Type message...",
                       border: InputBorder.none,
                     ),
                   ),
                 ),
+
                 IconButton(
                   icon: const Icon(Icons.send, color: Colors.blue),
                   onPressed: send,
