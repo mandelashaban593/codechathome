@@ -4,14 +4,15 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 
-import '../dashboard/student_dashboard.dart';
-import '../dashboard/mentor_dashboard.dart';
+import '../student/student_dashboard.dart';
+import '../mentor/mentor_dashboard.dart';
 import '../dashboard/admin_dashboard.dart';
 
 import '../auth/register_screen.dart';
 import '../infopages/contact_screen.dart';
 import '../infopages/privacy_screen.dart';
 import '../infopages/termscond_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final String? username;
@@ -57,10 +58,15 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => isLoading = true);
 
     try {
-      var res = await ApiService.post("login/", {
-        "username": user.text.trim(),
-        "password": pass.text.trim(),
-      });
+      // ✅ FIX: auth: false — login is a public endpoint, no token needed
+      var res = await ApiService.post(
+        "login/",
+        {
+          "username": user.text.trim(),
+          "password": pass.text.trim(),
+        },
+        auth: false,
+      );
 
       var data = jsonDecode(res.body);
 
@@ -78,29 +84,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
       String username = data["username"];
 
-      // ================= FIXED NAVIGATION =================
+      // ================= NAVIGATION BY ROLE =================
       if (data["role"] == "admin") {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
               builder: (_) => AdminDashboard(username: username)),
         );
-      } 
-      else if (data["role"] == "mentor") {
+      } else if (data["role"] == "mentor") {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
               builder: (_) => MentorDashboard(username: username)),
         );
-      } 
-      else {
+      } else {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
               builder: (_) => StudentDashboard(username: username)),
         );
       }
-
     } catch (e) {
       showMsg("Network error");
     }
@@ -284,7 +287,22 @@ class _LoginScreenState extends State<LoginScreen> {
                           );
                         },
                         child: const Text("Create account"),
-                      )
+                      ),
+
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) =>
+                                    const ForgotPasswordScreen()),
+                          );
+                        },
+                        child: const Text(
+                          "Forgot Password?",
+                          style: TextStyle(color: Colors.blue),
+                        ),
+                      ),
                     ],
                   ),
                 ),

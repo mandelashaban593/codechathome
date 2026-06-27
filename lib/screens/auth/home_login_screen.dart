@@ -4,27 +4,37 @@ import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 
-import '../dashboard/student_dashboard.dart';
-import '../dashboard/mentor_dashboard.dart';
+import '../student/student_dashboard.dart';
+import '../mentor/mentor_dashboard.dart';
 import '../dashboard/admin_dashboard.dart';
 
 import '../auth/register_screen.dart';
 import '../infopages/contact_screen.dart';
 import '../infopages/privacy_screen.dart';
 import '../infopages/termscond_screen.dart';
+import 'forgot_password_screen.dart';
 
 class HomeLoginScreen extends StatefulWidget {
   const HomeLoginScreen({Key? key}) : super(key: key);
 
   @override
-  _HomeLoginScreenState createState() => _HomeLoginScreenState();
+  _HomeLoginScreenState createState() =>
+      _HomeLoginScreenState();
 }
 
 class _HomeLoginScreenState extends State<HomeLoginScreen> {
+
   final user = TextEditingController();
   final pass = TextEditingController();
 
   bool isLoading = false;
+
+  void showMsg(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(
+      SnackBar(content: Text(msg)),
+    );
+  }
 
   @override
   void dispose() {
@@ -33,26 +43,28 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
     super.dispose();
   }
 
-  void showMsg(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
-  }
-
   // ================= LOGIN =================
   Future<void> login(BuildContext context) async {
-    if (user.text.trim().isEmpty || pass.text.trim().isEmpty) {
+
+    if (user.text.trim().isEmpty ||
+        pass.text.trim().isEmpty) {
       return showMsg("Username and password required");
     }
 
     setState(() => isLoading = true);
 
     try {
-      var res = await ApiService.post("login/", {
-        "username": user.text.trim(),
-        "password": pass.text.trim(),
-      });
 
-      var data = jsonDecode(res.body);
+      final res = await ApiService.post(
+        "login/",
+        {
+          "username": user.text.trim(),
+          "password": pass.text.trim(),
+        },
+        auth: false,
+      );
+
+      final data = jsonDecode(res.body);
 
       if (res.statusCode != 200 || data["token"] == null) {
         showMsg(data["error"] ?? "Login failed");
@@ -60,39 +72,56 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
         return;
       }
 
+      // ================= SAVE USER =================
       await AuthService.saveUser(
         data["token"],
         data["role"],
         data["username"],
       );
 
+      // ================= DEBUG LOGS =================
+      print("\n================ LOGIN SUCCESS ================");
+      print("TOKEN: ${data["token"]}");
+      print("ROLE: ${data["role"]}");
+      print("USERNAME: ${data["username"]}");
+      print("==============================================\n");
+
       String username = data["username"];
 
-      // ================= FIXED NAVIGATION =================
-
+      // ================= NAVIGATION =================
       if (data["role"] == "admin") {
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (_) => AdminDashboard(username: username)),
+            builder: (_) =>
+                AdminDashboard(username: username),
+          ),
         );
 
       } else if (data["role"] == "mentor") {
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (_) => MentorDashboard(username: username)),
+            builder: (_) =>
+                MentorDashboard(username: username),
+          ),
         );
 
       } else {
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (_) => StudentDashboard(username: username)),
+            builder: (_) =>
+                StudentDashboard(username: username),
+          ),
         );
       }
 
     } catch (e) {
+      print("LOGIN ERROR: $e");
       showMsg("Network error");
     }
 
@@ -105,18 +134,25 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
       children: [
         TextButton(
           onPressed: () {},
-          child: const Text("Login",
-              style: TextStyle(color: Colors.white)),
+          child: const Text(
+            "Login",
+            style: TextStyle(color: Colors.white),
+          ),
         ),
         TextButton(
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const RegisterScreen()),
+              MaterialPageRoute(
+                builder: (_) =>
+                    const RegisterScreen(),
+              ),
             );
           },
-          child: const Text("Register",
-              style: TextStyle(color: Colors.white)),
+          child: const Text(
+            "Register",
+            style: TextStyle(color: Colors.white),
+          ),
         ),
       ],
     );
@@ -130,39 +166,62 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
+
           Wrap(
-            alignment: WrapAlignment.center,
             spacing: 20,
             children: [
+
               TextButton(
-                child: const Text("Contact",
-                    style: TextStyle(color: Colors.white)),
                 onPressed: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => ContactScreen()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ContactScreen(),
+                    ),
+                  );
                 },
+                child: const Text(
+                  "Contact",
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
+
               TextButton(
-                child: const Text("Privacy",
-                    style: TextStyle(color: Colors.white)),
                 onPressed: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => PrivacyScreen()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PrivacyScreen(),
+                    ),
+                  );
                 },
+                child: const Text(
+                  "Privacy",
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
+
               TextButton(
-                child: const Text("Terms",
-                    style: TextStyle(color: Colors.white)),
                 onPressed: () {
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => TermsCondScreen()));
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TermsCondScreen(),
+                    ),
+                  );
                 },
+                child: const Text(
+                  "Terms",
+                  style: TextStyle(color: Colors.white),
+                ),
               ),
             ],
           ),
+
           const SizedBox(height: 10),
+
           const Text(
-            "CodeChathome - Learn from Software Development Trainers, mentors online anytime, anywhere.",
+            "CodeChathome - Learn anytime, anywhere",
             style: TextStyle(color: Colors.white),
             textAlign: TextAlign.center,
           ),
@@ -174,6 +233,7 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
   // ================= UI =================
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.blue,
@@ -181,8 +241,7 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
           children: [
             Image.asset("assets/images/softtutor.png", height: 35),
             const SizedBox(width: 10),
-            const Text("Home Login",
-                style: TextStyle(color: Colors.white)),
+            const Text("Home Login"),
           ],
         ),
         actions: [buildTopNavigation()],
@@ -190,10 +249,12 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
 
       body: Column(
         children: [
+
           Expanded(
             child: Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
+
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 400),
                   padding: const EdgeInsets.all(20),
@@ -202,35 +263,29 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                          color: Colors.grey.shade300,
-                          blurRadius: 10)
+                        color: Colors.grey.shade300,
+                        blurRadius: 10,
+                      )
                     ],
                   ),
+
                   child: Column(
                     children: [
+
                       const Text(
                         "Welcome Back",
                         style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black),
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
 
-                      const SizedBox(height: 10),
-
-                      const Text(
-                        "Login to continue",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 20),
 
                       TextField(
                         controller: user,
                         decoration: const InputDecoration(
                           labelText: "Username",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.person),
                         ),
                       ),
 
@@ -241,36 +296,25 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
                         obscureText: true,
                         decoration: const InputDecoration(
                           labelText: "Password",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.lock),
                         ),
                       ),
 
-                      const SizedBox(height: 25),
+                      const SizedBox(height: 20),
 
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed:
-                              isLoading ? null : () => login(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 15),
-                          ),
+                          onPressed: isLoading
+                              ? null
+                              : () => login(context),
                           child: isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
                                 )
                               : const Text("Login"),
                         ),
                       ),
-
+                      
                       const SizedBox(height: 10),
 
                       TextButton(
@@ -282,7 +326,22 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
                           );
                         },
                         child: const Text("Create account"),
-                      )
+                      ),
+                        // ── ADD THIS BUTTON after the "Create account" TextButton ──
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordScreen()),
+                          );
+                        },
+                        child: const Text(
+                          "Forgot Password?",
+                          style: TextStyle(color: Colors.blue),
+                        ),
+                      ),
+
                     ],
                   ),
                 ),
