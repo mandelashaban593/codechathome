@@ -12,6 +12,7 @@ import '../auth/register_screen.dart';
 import '../infopages/contact_screen.dart';
 import '../infopages/privacy_screen.dart';
 import '../infopages/termscond_screen.dart';
+import 'forgot_password_screen.dart';
 
 class HomeLoginScreen extends StatefulWidget {
   const HomeLoginScreen({Key? key}) : super(key: key);
@@ -311,6 +312,33 @@ class _HomeLoginScreenState extends State<HomeLoginScreen> {
                                   color: Colors.white,
                                 )
                               : const Text("Login"),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 10),
+
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const RegisterScreen()),
+                          );
+                        },
+                        child: const Text("Create account"),
+                      ),
+                        // ── ADD THIS BUTTON after the "Create account" TextButton ──
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const ForgotPasswordScreen()),
+                          );
+                        },
+                        child: const Text(
+                          "Forgot Password?",
+                          style: TextStyle(color: Colors.blue),
                         ),
                       ),
 
