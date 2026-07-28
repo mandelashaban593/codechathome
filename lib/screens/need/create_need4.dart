@@ -1,30 +1,14 @@
 // ============================================================
 //  create_need.dart  –  Full two-step signup
 //
-//  UPDATED (this revision):
-//    • Login + Contact are now always visible, tappable
-//      buttons centered in the AppBar (not hidden behind a
-//      "⋮" menu) so a user who lands on Sign Up can decide to
-//      log in instead — works the same on Android, iOS and
-//      desktop since it's plain Flutter widgets, no
-//      platform-specific code needed.
-//    • Footer no longer overlaps input fields: it now sits in
-//      Scaffold.bottomNavigationBar (wrapped in SafeArea) so it
-//      always reserves its own space instead of floating over
-//      the form, and the scroll view gets extra bottom padding
-//      that grows with the keyboard so the last field is never
-//      hidden.
-//    • All text fields / dropdown now use a shared, bold
-//      outlined input style (thicker border, bold white label)
-//      so labels and field edges are easy to see.
-//
-//  PREVIOUSLY ADDED:
+//  UPDATED:
 //    • mentor role  → shows skill picker loaded from Django
 //                     Skills model. Mentor taps chips to add
 //                     skills, taps again to remove them.
-//                     Search text field filters chips live as
-//                     mentor types. Skills not in the server
-//                     list can be added as custom entries too.
+//                     NEW: search text field filters chips
+//                     live as mentor types. Skills not in the
+//                     server list can be added as custom
+//                     entries via the search field too.
 //    • student role → username + mentor picker (2 defaults +
 //                     "Search others..." by skill/name) +
 //                     learning need textarea
@@ -298,7 +282,7 @@ class _CreateNeedState extends State<CreateNeed> {
   final _username     = TextEditingController();
   final _learningNeed = TextEditingController();
 
-  // ── skill search controller (mentor flow) ────────────────────────────
+  // ── NEW: skill search controller (mentor flow) ────────────────────────────
   final _skillSearch = TextEditingController();
 
   // ── Form keys ──────────────────────────────────────────────────────────────
@@ -324,9 +308,9 @@ class _CreateNeedState extends State<CreateNeed> {
   bool         _skillsLoading    = false;
   String?      _skillsError;
 
-  // ── live-filtered subset of _availableSkills based on search text ─────
+  // ── NEW: live-filtered subset of _availableSkills based on search text ─────
   List<String> _filteredSkills   = [];
-  // tracks what was last typed in the skill search box
+  // NEW: tracks what was last typed in the skill search box
   String       _skillQuery       = '';
 
   // ── Live uniqueness-check state ────────────────────────────────────────────
@@ -352,7 +336,7 @@ class _CreateNeedState extends State<CreateNeed> {
   void initState() {
     super.initState();
     _checkForSavedDraft();
-    // listen to skill search field and filter chips on every keystroke
+    // NEW: listen to skill search field and filter chips on every keystroke
     _skillSearch.addListener(_onSkillSearchChanged);
   }
 
@@ -364,14 +348,14 @@ class _CreateNeedState extends State<CreateNeed> {
     _password.dispose();
     _username.dispose();
     _learningNeed.dispose();
-    _skillSearch.dispose();
+    _skillSearch.dispose();         // NEW
     _phoneDebounce?.cancel();
     _usernameDebounce?.cancel();
     super.dispose();
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // Skill search filter logic
+  // NEW: Skill search filter logic
   //
   // When the mentor types in the search field:
   //   • _filteredSkills is rebuilt to only show matching chips.
@@ -392,9 +376,9 @@ class _CreateNeedState extends State<CreateNeed> {
     });
   }
 
-  // Returns true when the search text is non-empty and does NOT already
-  // exist (case-insensitive) in either _availableSkills or _selectedSkills,
-  // meaning we should offer an "Add custom skill" chip.
+  // NEW: Returns true when the search text is non-empty and does NOT already
+  //      exist (case-insensitive) in either _availableSkills or _selectedSkills,
+  //      meaning we should offer an "Add custom skill" chip.
   bool get _showAddCustomChip {
     if (_skillQuery.isEmpty) return false;
     final q = _skillQuery.toLowerCase();
@@ -405,7 +389,7 @@ class _CreateNeedState extends State<CreateNeed> {
     return !alreadyInList && !alreadySelected;
   }
 
-  // Adds the raw search text as a custom skill and clears the search box.
+  // NEW: Adds the raw search text as a custom skill and clears the search box.
   void _addCustomSkill() {
     final raw = _skillSearch.text.trim();
     if (raw.isEmpty) return;
@@ -555,69 +539,6 @@ class _CreateNeedState extends State<CreateNeed> {
     if (p.startsWith('256'))  p = p.substring(3);
     if (p.startsWith('0'))    p = p.substring(1);
     return '256$p';
-  }
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // NEW: Shared bold input decoration
-  //
-  // Thicker (2px) outlined border in every state, a bold white label that
-  // stays bold when floated, filled background so the field reads clearly
-  // against the dark background image, and a slightly heavier focus/error
-  // border so state changes are obvious.
-  // ════════════════════════════════════════════════════════════════════════════
-
-  InputDecoration _boldDecoration({
-    required String label,
-    String? hint,
-    required IconData icon,
-    Widget? suffixIcon,
-    String? errorText,
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      labelStyle: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-        fontSize: 15,
-      ),
-      floatingLabelStyle: const TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-        fontSize: 16,
-      ),
-      hintStyle: const TextStyle(color: Colors.white54),
-      prefixIcon: Icon(icon, color: Colors.white, size: 22),
-      suffixIcon: suffixIcon,
-      errorText: errorText,
-      errorStyle: const TextStyle(
-        color: Colors.redAccent,
-        fontWeight: FontWeight.w600,
-      ),
-      filled: true,
-      fillColor: Colors.white.withOpacity(0.08),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.white70, width: 2),
-      ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.white70, width: 2),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.lightBlueAccent, width: 2.5),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.redAccent, width: 2),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.redAccent, width: 2.5),
-      ),
-    );
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -953,7 +874,7 @@ class _CreateNeedState extends State<CreateNeed> {
         ),
         const SizedBox(height: 14),
 
-        // ── Skill search / add field ───────────────────────────────────
+        // ── NEW: Skill search / add field ───────────────────────────────────
         //
         //  • Typing filters the chip grid live.
         //  • If the typed text isn't already in the list, an "+ Add" button
@@ -963,7 +884,7 @@ class _CreateNeedState extends State<CreateNeed> {
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.12),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white70, width: 2),
+            border: Border.all(color: Colors.white24),
           ),
           child: Row(
             children: [
@@ -1223,25 +1144,25 @@ class _CreateNeedState extends State<CreateNeed> {
               TextFormField(
                 controller: _fullName,
                 textCapitalization: TextCapitalization.words,
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w600),
-                decoration: _boldDecoration(
-                  label: 'Full Name',
-                  icon: Icons.person_outline,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Full Name',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  prefixIcon: Icon(Icons.person_outline, color: Colors.white70),
                 ),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Full name is required.' : null,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
 
               TextFormField(
                 controller: _email,
                 keyboardType: TextInputType.emailAddress,
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w600),
-                decoration: _boldDecoration(
-                  label: 'Email',
-                  icon: Icons.email_outlined,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  prefixIcon: Icon(Icons.email_outlined, color: Colors.white70),
                 ),
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) return 'Email is required.';
@@ -1251,18 +1172,18 @@ class _CreateNeedState extends State<CreateNeed> {
                   return null;
                 },
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
 
               TextFormField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
                 onChanged: _onPhoneChanged,
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w600),
-                decoration: _boldDecoration(
-                  label: 'Phone Number',
-                  hint: '07xxxxxxxx',
-                  icon: Icons.phone_outlined,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Phone Number',
+                  hintText: '07xxxxxxxx',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  prefixIcon: const Icon(Icons.phone_outlined, color: Colors.white70),
                   suffixIcon: _uniqueSuffixIcon(
                     checking: _phoneChecking,
                     error:    _phoneError,
@@ -1276,22 +1197,22 @@ class _CreateNeedState extends State<CreateNeed> {
                   return null;
                 },
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
 
               TextFormField(
                 controller: _password,
                 obscureText: _obscurePassword,
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w600),
-                decoration: _boldDecoration(
-                  label: 'Password',
-                  icon: Icons.lock_outline,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  prefixIcon: const Icon(Icons.lock_outline, color: Colors.white70),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _obscurePassword
                           ? Icons.visibility_outlined
                           : Icons.visibility_off_outlined,
-                      color: Colors.white,
+                      color: Colors.white70,
                     ),
                     onPressed: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
@@ -1303,23 +1224,22 @@ class _CreateNeedState extends State<CreateNeed> {
                   return null;
                 },
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
 
               DropdownButtonFormField<String>(
                 value: _selectedRole,
                 dropdownColor: Colors.white,
-                style: const TextStyle(
-                    color: Colors.black87, fontWeight: FontWeight.w600),
-                decoration: _boldDecoration(
-                  label: 'Role',
-                  icon: Icons.badge_outlined,
+                style: const TextStyle(color: Colors.black87),
+                decoration: const InputDecoration(
+                  labelText: 'Role',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  prefixIcon: Icon(Icons.badge_outlined, color: Colors.white70),
                 ),
                 items: _roles.map((r) => DropdownMenuItem(
                   value: r,
                   child: Text(
                     r[0].toUpperCase() + r.substring(1),
-                    style: const TextStyle(
-                        color: Colors.black87, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: Colors.black87),
                   ),
                 )).toList(),
                 onChanged: (v) => setState(() => _selectedRole = v),
@@ -1386,12 +1306,13 @@ class _CreateNeedState extends State<CreateNeed> {
                 onChanged: _onUsernameChanged,
                 autocorrect: false,
                 enableSuggestions: false,
-                style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w600),
-                decoration: _boldDecoration(
-                  label: 'Username',
-                  hint: 'Choose a unique username',
-                  icon: Icons.alternate_email,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Username',
+                  hintText: 'Choose a unique username',
+                  labelStyle: const TextStyle(color: Colors.white70),
+                  prefixIcon:
+                      const Icon(Icons.alternate_email, color: Colors.white70),
                   suffixIcon: _uniqueSuffixIcon(
                     checking: _usernameChecking,
                     error:    _usernameError,
@@ -1437,13 +1358,15 @@ class _CreateNeedState extends State<CreateNeed> {
                 TextFormField(
                   controller: _learningNeed,
                   maxLines: 3,
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600),
-                  decoration: _boldDecoration(
-                    label: 'Learning Need',
-                    hint: 'Describe what you want to learn…',
-                    icon: Icons.lightbulb_outline,
-                  ).copyWith(alignLabelWithHint: true),
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Learning Need',
+                    hintText: 'Describe what you want to learn…',
+                    alignLabelWithHint: true,
+                    labelStyle: TextStyle(color: Colors.white70),
+                    prefixIcon: Icon(Icons.lightbulb_outline,
+                        color: Colors.white70),
+                  ),
                   validator: (v) => (v == null || v.trim().isEmpty)
                       ? 'Please describe your learning need.' : null,
                 ),
@@ -1473,10 +1396,6 @@ class _CreateNeedState extends State<CreateNeed> {
                         ),
                 ),
               ),
-
-              // Extra breathing room so the last field/button is never
-              // crowded by the footer, even on short screens.
-              const SizedBox(height: 12),
             ],
           ),
         ),
@@ -1566,53 +1485,17 @@ class _CreateNeedState extends State<CreateNeed> {
 
   // ════════════════════════════════════════════════════════════════════════════
   // Top navigation
-  //
-  // NEW: "Login" and "Contact" are always-visible, tappable buttons centered
-  // in the AppBar title area — a signing-up user immediately sees how to
-  // switch to Login instead of having to open a "⋮" overflow menu. This is
-  // plain Flutter/Material, so it renders identically on Android, iOS, and
-  // desktop/web builds — no platform-specific code required.
-  // Privacy Policy and Terms & Conditions remain in a small overflow menu
-  // on the far right since they're consulted far less often.
   // ════════════════════════════════════════════════════════════════════════════
 
-  Widget _topNavButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: Colors.white, size: 20),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOverflowMenu() {
+  Widget _buildTopNavigation() {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.more_vert, color: Colors.white),
       onSelected: (v) {
         switch (v) {
+          case 'contact':
+            Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ContactScreen()));
+            break;
           case 'privacy':
             Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const PrivacyScreen()));
@@ -1621,9 +1504,15 @@ class _CreateNeedState extends State<CreateNeed> {
             Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const TermsCondScreen()));
             break;
+          case 'login':
+            Navigator.pushReplacement(context,
+                MaterialPageRoute(builder: (_) => const HomeLoginScreen()));
+            break;
         }
       },
       itemBuilder: (_) => const [
+        PopupMenuItem(value: 'login',   child: Text('Login')),
+        PopupMenuItem(value: 'contact', child: Text('Contact')),
         PopupMenuItem(value: 'privacy', child: Text('Privacy Policy')),
         PopupMenuItem(value: 'terms',   child: Text('Terms & Conditions')),
       ],
@@ -1632,45 +1521,36 @@ class _CreateNeedState extends State<CreateNeed> {
 
   // ════════════════════════════════════════════════════════════════════════════
   // Footer
-  //
-  // NEW: rendered via Scaffold.bottomNavigationBar (wrapped in SafeArea)
-  // instead of being stacked inside the scrolling body. This guarantees the
-  // footer always occupies its own fixed strip at the very bottom of the
-  // screen and can never visually sit on top of an input field — the
-  // scrollable form area above it shrinks to make room instead.
   // ════════════════════════════════════════════════════════════════════════════
 
   Widget _buildFooter() {
-    return SafeArea(
-      top: false,
-      child: Container(
-        color: Colors.black54,
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextButton(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const PrivacyScreen())),
-              child: const Text('Privacy',
-                  style: TextStyle(color: Colors.white70, fontSize: 12)),
-            ),
-            const Text('·', style: TextStyle(color: Colors.white54)),
-            TextButton(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const TermsCondScreen())),
-              child: const Text('Terms',
-                  style: TextStyle(color: Colors.white70, fontSize: 12)),
-            ),
-            const Text('·', style: TextStyle(color: Colors.white54)),
-            TextButton(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const ContactScreen())),
-              child: const Text('Contact',
-                  style: TextStyle(color: Colors.white70, fontSize: 12)),
-            ),
-          ],
-        ),
+    return Container(
+      color: Colors.black54,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TextButton(
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const PrivacyScreen())),
+            child: const Text('Privacy',
+                style: TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+          const Text('·', style: TextStyle(color: Colors.white54)),
+          TextButton(
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const TermsCondScreen())),
+            child: const Text('Terms',
+                style: TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+          const Text('·', style: TextStyle(color: Colors.white54)),
+          TextButton(
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const ContactScreen())),
+            child: const Text('Contact',
+                style: TextStyle(color: Colors.white70, fontSize: 12)),
+          ),
+        ],
       ),
     );
   }
@@ -1689,59 +1569,24 @@ class _CreateNeedState extends State<CreateNeed> {
       );
     }
 
-    // Extra bottom padding on the scroll view so, combined with the footer
-    // now living in bottomNavigationBar, the last field/button in the form
-    // never ends up hidden behind the footer or the on-screen keyboard.
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-
     return Scaffold(
-      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         backgroundColor: Colors.blue,
-        automaticallyImplyLeading: false,
-        titleSpacing: 0,
-        leadingWidth: 52,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 8),
-          child: Image.asset(
-            'assets/images/codechathome.png',
-            errorBuilder: (c, e, s) =>
-                const Icon(Icons.school, color: Colors.white),
-          ),
-        ),
-        // Login + Contact centered in the AppBar — the "top middle part" —
-        // so they're the first thing a signing-up user notices.
-        centerTitle: true,
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            _topNavButton(
-              icon: Icons.login,
-              label: 'Login',
-              onTap: () => Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const HomeLoginScreen()),
-              ),
+            Image.asset(
+              'assets/images/codechathome.png',
+              height: 35,
+              errorBuilder: (c, e, s) =>
+                  const Icon(Icons.school, color: Colors.white),
             ),
-            const SizedBox(width: 8),
-            Container(width: 1, height: 20, color: Colors.white30),
-            const SizedBox(width: 8),
-            _topNavButton(
-              icon: Icons.support_agent,
-              label: 'Contact',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ContactScreen()),
-              ),
-            ),
+            const SizedBox(width: 10),
+            const Text('Sign Up',
+                style: TextStyle(color: Colors.white)),
           ],
         ),
-        actions: [_buildOverflowMenu()],
+        actions: [_buildTopNavigation()],
       ),
-      // Footer lives here, not inside the scrolling body, so it always has
-      // its own reserved strip and can never overlap an input field.
-      bottomNavigationBar: _buildFooter(),
       body: Stack(
         children: [
           Positioned.fill(
@@ -1755,26 +1600,29 @@ class _CreateNeedState extends State<CreateNeed> {
           Positioned.fill(
               child: Container(
                   color: Colors.black.withOpacity(0.45))),
-          SafeArea(
-            top: false,
-            bottom: false,
-            child: ListView(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 24 + bottomInset),
-              children: [
-                const SizedBox(height: 10),
-                if (_showResumeBanner) _buildResumeBanner(),
-                _buildStepper(),
-                const SizedBox(height: 20),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 350),
-                  transitionBuilder: (child, anim) =>
-                      FadeTransition(opacity: anim, child: child),
-                  child: _step == 1
-                      ? _buildStep1()
-                      : _buildStep2(),
+          Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: [
+                    const SizedBox(height: 10),
+                    if (_showResumeBanner) _buildResumeBanner(),
+                    _buildStepper(),
+                    const SizedBox(height: 20),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      transitionBuilder: (child, anim) =>
+                          FadeTransition(opacity: anim, child: child),
+                      child: _step == 1
+                          ? _buildStep1()
+                          : _buildStep2(),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              _buildFooter(),
+            ],
           ),
         ],
       ),
