@@ -400,4 +400,204 @@ class ApiService {
       };
     }
   }
+
+
+  // =====================================================
+// SIGNUP STEP 1 - SAVE DRAFT
+// POST /signup/draft/
+// =====================================================
+static Future<http.Response> signupDraft({
+  required String fullName,
+  required String email,
+  required String phone,
+  required String password,
+  required String role,
+}) async {
+  return post(
+    'signup/draft/',
+    {
+      "full_name": fullName,
+      "email": email,
+      "phone": phone,
+      "password": password,
+      "role": role,
+    },
+    auth: false,
+  );
+}
+
+// =====================================================
+// RESUME SIGNUP
+// POST /signup/resume/
+// =====================================================
+static Future<http.Response> resumeSignup(
+  String email,
+) async {
+  return post(
+    'signup/resume/',
+    {
+      "email": email,
+    },
+    auth: false,
+  );
+}
+
+// =====================================================
+// GET ALL SKILLS
+// GET /skills/
+// =====================================================
+static Future<http.Response> getSkills() async {
+  return get(
+    'skills/',
+    auth: false,
+  );
+}
+
+// =====================================================
+// COMPLETE SIGNUP
+// POST /signup/complete/
+// =====================================================
+static Future<http.Response> completeSignup({
+  required String fullName,
+  required String email,
+  required String phone,
+  required String password,
+  required String role,
+  required String username,
+  required String mentor,
+  required String learningNeed,
+  required String skills,
+}) async {
+  return post(
+    'signup/complete/',
+    {
+      "full_name": fullName,
+      "email": email,
+      "phone": phone,
+      "password": password,
+      "role": role,
+      "username": username,
+      "mentor": mentor,
+      "learning_need": learningNeed,
+      "skills": skills,
+    },
+    auth: false,
+  );
+}
+
+// =====================================================
+// CHECK PHONE
+// POST /check-phone/
+// =====================================================
+static Future<http.Response> checkPhone(
+  String phone,
+) async {
+  return post(
+    'check-phone/',
+    {
+      "phone": phone,
+    },
+    auth: false,
+  );
+}
+
+// =====================================================
+// CHECK USERNAME
+// POST /check-username/
+// =====================================================
+static Future<http.Response> checkUsername(
+  String username,
+) async {
+  return post(
+    'check-username/',
+    {
+      "username": username,
+    },
+    auth: false,
+  );
+}
+
+// =====================================================
+// SEARCH MENTORS
+// GET /mentors/search/?q=
+// =====================================================
+static Future<http.Response> searchMentors(
+  String query,
+) async {
+  return get(
+    'mentors/search/?q=${Uri.encodeComponent(query)}',
+    auth: false,
+  );
+}
+
+// =====================================================
+// GENERIC PUT REQUEST
+// =====================================================
+static Future<http.Response> put(
+  String url,
+  Map body, {
+  bool auth = true,
+}) async {
+  final fullUrl = ApiConfig.baseUrl + url;
+
+  final requestHeaders = auth
+      ? await headers()
+      : publicHeaders;
+
+  final response = await http.put(
+    Uri.parse(fullUrl),
+    headers: requestHeaders,
+    body: jsonEncode(body),
+  );
+
+  return response;
+}
+
+// =====================================================
+// GENERIC PATCH REQUEST
+// =====================================================
+static Future<http.Response> patch(
+  String url,
+  Map body, {
+  bool auth = true,
+}) async {
+  final fullUrl = ApiConfig.baseUrl + url;
+
+  final requestHeaders = auth
+      ? await headers()
+      : publicHeaders;
+
+  final response = await http.patch(
+    Uri.parse(fullUrl),
+    headers: requestHeaders,
+    body: jsonEncode(body),
+  );
+
+  return response;
+}
+
+// =====================================================
+// GENERIC DELETE REQUEST
+// =====================================================
+static Future<http.Response> delete(
+  String url, {
+  Map? body,
+  bool auth = true,
+}) async {
+  final fullUrl = ApiConfig.baseUrl + url;
+
+  final requestHeaders = auth
+      ? await headers()
+      : publicHeaders;
+
+  final response = await http.delete(
+    Uri.parse(fullUrl),
+    headers: requestHeaders,
+    body: body == null ? null : jsonEncode(body),
+  );
+
+  return response;
+}
+
+
 }

@@ -6,7 +6,7 @@ import '../../services/auth_service.dart';
 
 import '../student/student_dashboard.dart';
 import '../mentor/mentor_dashboard.dart';
-import '../dashboard/admin_dashboard.dart';
+import '../admin/admin_dashboard.dart';
 
 import '../auth/register_screen.dart';
 import '../infopages/contact_screen.dart';

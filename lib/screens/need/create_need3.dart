@@ -5,10 +5,8 @@
 //    • mentor role  → shows skill picker loaded from Django
 //                     Skills model. Mentor taps chips to add
 //                     skills, taps again to remove them.
-//                     NEW: search text field filters chips
-//                     live as mentor types. Skills not in the
-//                     server list can be added as custom
-//                     entries via the search field too.
+//                     On submit, skills list is saved to
+//                     Profile model via completeSignup API.
 //    • student role → username + mentor picker (2 defaults +
 //                     "Search others..." by skill/name) +
 //                     learning need textarea
@@ -41,7 +39,7 @@ const _kDraftStep     = 'draft_step';
 const List<String> _kDefaultMentors = ['mentor_shaban', 'mentor_hans'];
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Mentor search modal  (student flow — unchanged)
+//  Mentor search modal  (student flow — unchanged from original)
 // ─────────────────────────────────────────────────────────────────────────────
 class _MentorSearchModal extends StatefulWidget {
   final String? initialQuery;
@@ -282,9 +280,6 @@ class _CreateNeedState extends State<CreateNeed> {
   final _username     = TextEditingController();
   final _learningNeed = TextEditingController();
 
-  // ── NEW: skill search controller (mentor flow) ────────────────────────────
-  final _skillSearch = TextEditingController();
-
   // ── Form keys ──────────────────────────────────────────────────────────────
   final _form1Key = GlobalKey<FormState>();
   final _form2Key = GlobalKey<FormState>();
@@ -303,15 +298,13 @@ class _CreateNeedState extends State<CreateNeed> {
   String? _selectedMentor;
 
   // ── Skills (mentor flow) ───────────────────────────────────────────────────
+  // All available skills loaded from Django Skill model
   List<String> _availableSkills  = [];
+  // Skills the mentor has tapped/selected
   List<String> _selectedSkills   = [];
+  // Loading state for the skills fetch
   bool         _skillsLoading    = false;
   String?      _skillsError;
-
-  // ── NEW: live-filtered subset of _availableSkills based on search text ─────
-  List<String> _filteredSkills   = [];
-  // NEW: tracks what was last typed in the skill search box
-  String       _skillQuery       = '';
 
   // ── Live uniqueness-check state ────────────────────────────────────────────
   bool    _phoneChecking    = false;
@@ -336,8 +329,6 @@ class _CreateNeedState extends State<CreateNeed> {
   void initState() {
     super.initState();
     _checkForSavedDraft();
-    // NEW: listen to skill search field and filter chips on every keystroke
-    _skillSearch.addListener(_onSkillSearchChanged);
   }
 
   @override
@@ -348,59 +339,9 @@ class _CreateNeedState extends State<CreateNeed> {
     _password.dispose();
     _username.dispose();
     _learningNeed.dispose();
-    _skillSearch.dispose();         // NEW
     _phoneDebounce?.cancel();
     _usernameDebounce?.cancel();
     super.dispose();
-  }
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // NEW: Skill search filter logic
-  //
-  // When the mentor types in the search field:
-  //   • _filteredSkills is rebuilt to only show matching chips.
-  //   • If the typed text exactly matches nothing in _availableSkills, an
-  //     "Add '<query>' as custom skill" action chip appears at the top of the
-  //     chip grid so the mentor can still add skills not yet in Django.
-  // ════════════════════════════════════════════════════════════════════════════
-
-  void _onSkillSearchChanged() {
-    final q = _skillSearch.text.trim().toLowerCase();
-    setState(() {
-      _skillQuery      = q;
-      _filteredSkills  = q.isEmpty
-          ? List<String>.from(_availableSkills)
-          : _availableSkills
-              .where((s) => s.toLowerCase().contains(q))
-              .toList();
-    });
-  }
-
-  // NEW: Returns true when the search text is non-empty and does NOT already
-  //      exist (case-insensitive) in either _availableSkills or _selectedSkills,
-  //      meaning we should offer an "Add custom skill" chip.
-  bool get _showAddCustomChip {
-    if (_skillQuery.isEmpty) return false;
-    final q = _skillQuery.toLowerCase();
-    final alreadyInList = _availableSkills
-        .any((s) => s.toLowerCase() == q);
-    final alreadySelected = _selectedSkills
-        .any((s) => s.toLowerCase() == q);
-    return !alreadyInList && !alreadySelected;
-  }
-
-  // NEW: Adds the raw search text as a custom skill and clears the search box.
-  void _addCustomSkill() {
-    final raw = _skillSearch.text.trim();
-    if (raw.isEmpty) return;
-    setState(() {
-      if (!_selectedSkills.contains(raw)) {
-        _selectedSkills.add(raw);
-      }
-      _skillSearch.clear();
-      _skillQuery     = '';
-      _filteredSkills = List<String>.from(_availableSkills);
-    });
   }
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -459,6 +400,7 @@ class _CreateNeedState extends State<CreateNeed> {
           _selectedRole = data['role'] ?? prefs.getString(_kDraftRole);
           _step         = 2;
         });
+        // If resuming as mentor, also reload skills
         if (_isMentor) _loadAvailableSkills();
         _showMsg('Welcome back! Pick up where you left off.');
       } else {
@@ -492,7 +434,8 @@ class _CreateNeedState extends State<CreateNeed> {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // Skills loader
+  // Skills loader  (NEW — mentor flow only)
+  // Calls GET /skills/  which returns the full Skill model list from Django
   // ════════════════════════════════════════════════════════════════════════════
 
   Future<void> _loadAvailableSkills() async {
@@ -505,8 +448,6 @@ class _CreateNeedState extends State<CreateNeed> {
         final list = body['skills'] as List<dynamic>? ?? [];
         setState(() {
           _availableSkills = list.map((e) => e.toString()).toList();
-          // Initialise filtered list to full list on first load
-          _filteredSkills  = List<String>.from(_availableSkills);
           _skillsLoading   = false;
         });
       } else {
@@ -632,7 +573,10 @@ class _CreateNeedState extends State<CreateNeed> {
       if (res.statusCode == 200 || res.statusCode == 209) {
         await _saveLocalDraft();
         setState(() => _step = 2);
+
+        // If mentor role — load available skills immediately after step 2 opens
         if (_isMentor) _loadAvailableSkills();
+
       } else {
         final errors = data['errors'] as Map<String, dynamic>?;
         _showMsg(errors != null
@@ -658,11 +602,13 @@ class _CreateNeedState extends State<CreateNeed> {
     if (_usernameError != null) { _showMsg(_usernameError!); return; }
     if (_usernameChecking) { _showMsg('Still verifying username — please wait.'); return; }
 
+    // Students must pick a mentor
     if (!_isMentor && _selectedMentor == null) {
       _showMsg('Please select a mentor.');
       return;
     }
 
+    // Mentors must select at least one skill
     if (_isMentor && _selectedSkills.isEmpty) {
       _showMsg('Please select at least one skill you can teach.');
       return;
@@ -679,6 +625,7 @@ class _CreateNeedState extends State<CreateNeed> {
         username:     _username.text.trim(),
         mentor:       _isMentor ? '' : (_selectedMentor ?? ''),
         learningNeed: _isMentor ? '' : _learningNeed.text.trim(),
+        // NEW: comma-joined skill names sent to backend for Profile.skills field
         skills:       _isMentor ? _selectedSkills.join(',') : '',
       );
 
@@ -815,45 +762,40 @@ class _CreateNeedState extends State<CreateNeed> {
     );
   }
 
-  // ── Skills picker widget (mentors only) ─────────────────────────────────────
+  // ── Skills picker widget (mentors only)  ────────────────────────────────────
   //
   //  Layout:
-  //  ┌──────────────────────────────────────────────────────────────┐
-  //  │  🎓 Skills you can teach                                     │
-  //  │  Tap skills to add. Tap again to remove.                     │
-  //  │                                                              │
-  //  │  [ 🔍 Search or add a skill…              ] [+ Add]         │
-  //  │                                                              │
-  //  │  [Python ✓]  [PHP]  [HTML ✓]  [CSS]  [Java]  …             │
-  //  │  (chips filtered live as the mentor types)                  │
-  //  │                                                              │
-  //  │  ┌────────────────────────────────────────────────────────┐ │
-  //  │  │ ✓ Selected skills: Python, HTML                        │ │
-  //  │  └────────────────────────────────────────────────────────┘ │
-  //  └──────────────────────────────────────────────────────────────┘
+  //  ┌─────────────────────────────────────────────────────┐
+  //  │  🎓 Your Teaching Skills                            │
+  //  │  Tap skills you can teach. Tap again to remove.     │
+  //  │                                                     │
+  //  │  [Python ✓]  [PHP]  [HTML ✓]  [CSS]  [Java]  …     │
+  //  │                                                     │
+  //  │  Selected: Python, HTML                             │
+  //  └─────────────────────────────────────────────────────┘
   Widget _buildSkillPicker() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
-        // ── Section divider ─────────────────────────────────────────────────
+        // Section divider
         Row(children: [
           Expanded(child: Divider(color: Colors.grey.shade300)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(
               'Your teaching skills',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+              style: TextStyle(
+                  fontSize: 12, color: Colors.grey.shade500),
             ),
           ),
           Expanded(child: Divider(color: Colors.grey.shade300)),
         ]),
         const SizedBox(height: 14),
 
-        // ── Label ───────────────────────────────────────────────────────────
-        const Row(
-          children: [
-            Icon(Icons.school_outlined, size: 20, color: Colors.white70),
+        // Label row
+        Row(
+          children: const [
+            Icon(Icons.school_outlined, size: 20, color: Colors.grey),
             SizedBox(width: 8),
             Flexible(
               child: Text(
@@ -872,77 +814,9 @@ class _CreateNeedState extends State<CreateNeed> {
           'Tap a skill to add it. Tap again to remove it.',
           style: TextStyle(fontSize: 12, color: Colors.white70),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
-        // ── NEW: Skill search / add field ───────────────────────────────────
-        //
-        //  • Typing filters the chip grid live.
-        //  • If the typed text isn't already in the list, an "+ Add" button
-        //    appears so the mentor can add it as a custom skill.
-        //  • Clear (✕) button resets the filter and shows all chips again.
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.white24),
-          ),
-          child: Row(
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Icon(Icons.search, color: Colors.white70, size: 20),
-              ),
-              Expanded(
-                child: TextField(
-                  controller: _skillSearch,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: const InputDecoration(
-                    hintText: 'Search or add a skill…',
-                    hintStyle: TextStyle(color: Colors.white38, fontSize: 14),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
-              ),
-              // "+" Add custom skill button — appears only when the typed
-              // text doesn't match any existing skill
-              if (_showAddCustomChip)
-                Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: TextButton.icon(
-                    onPressed: _addCustomSkill,
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text('Add', style: TextStyle(fontSize: 13)),
-                  ),
-                ),
-              // Clear button — resets filter to show all chips
-              if (_skillSearch.text.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white54, size: 18),
-                  padding: const EdgeInsets.only(right: 8),
-                  constraints: const BoxConstraints(),
-                  onPressed: () {
-                    _skillSearch.clear();
-                    // _onSkillSearchChanged fires automatically via the listener
-                  },
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // ── Loading / error / chip grid ─────────────────────────────────────
+        // Loading / error / chips
         if (_skillsLoading)
           const Center(
             child: Padding(
@@ -971,91 +845,39 @@ class _CreateNeedState extends State<CreateNeed> {
             'No skills available. Contact admin.',
             style: TextStyle(color: Colors.white70, fontSize: 13),
           )
-        else ...[
-          // ── "No match" hint when search returns nothing ──────────────────
-          if (_filteredSkills.isEmpty && _skillQuery.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: RichText(
-                text: TextSpan(
-                  style: const TextStyle(
-                      fontSize: 13, color: Colors.white70),
-                  children: [
-                    const TextSpan(text: 'No match for '),
-                    TextSpan(
-                      text: '"$_skillQuery"',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold),
-                    ),
-                    const TextSpan(
-                        text: ' — tap  + Add  to create it.'),
-                  ],
-                ),
-              ),
-            ),
-
-          // ── Chip grid ────────────────────────────────────────────────────
-          //   Shows _filteredSkills (not _availableSkills) so typing
-          //   progressively narrows the visible chips.
-          //   Also shows custom-added skills that aren't in the server list.
+        else
+          // ── Chip grid: each chip toggles the skill on/off ──────────────────
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: [
-              // Custom skills that were added manually always appear first
-              ..._selectedSkills
-                  .where((s) => !_availableSkills.contains(s))
-                  .map((skill) => FilterChip(
-                        label: Text(
-                          skill,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        selected: true,
-                        selectedColor: Colors.purple.shade700,
-                        backgroundColor: Colors.grey.shade100,
-                        checkmarkColor: Colors.white,
-                        avatar: const Icon(Icons.star,
-                            size: 14, color: Colors.white70),
-                        onSelected: (_) {
-                          setState(() => _selectedSkills.remove(skill));
-                        },
-                      )),
-
-              // Standard skills from Django (filtered by search text)
-              ..._filteredSkills.map((skill) {
-                final isSelected = _selectedSkills.contains(skill);
-                return FilterChip(
-                  label: Text(
-                    skill,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black87,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
+            children: _availableSkills.map((skill) {
+              final isSelected = _selectedSkills.contains(skill);
+              return FilterChip(
+                label: Text(
+                  skill,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : Colors.black87,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
-                  selected: isSelected,
-                  selectedColor: Colors.blue.shade700,
-                  backgroundColor: Colors.grey.shade100,
-                  checkmarkColor: Colors.white,
-                  onSelected: (picked) {
-                    setState(() {
-                      if (picked) {
-                        _selectedSkills.add(skill);
-                      } else {
-                        _selectedSkills.remove(skill);
-                      }
-                    });
-                  },
-                );
-              }),
-            ],
+                ),
+                selected: isSelected,
+                selectedColor: Colors.blue.shade700,
+                backgroundColor: Colors.grey.shade100,
+                checkmarkColor: Colors.white,
+                onSelected: (picked) {
+                  setState(() {
+                    if (picked) {
+                      _selectedSkills.add(skill);
+                    } else {
+                      _selectedSkills.remove(skill);
+                    }
+                  });
+                },
+              );
+            }).toList(),
           ),
-        ],
 
         // ── Selected skills summary ──────────────────────────────────────────
         if (_selectedSkills.isNotEmpty) ...[
@@ -1071,8 +893,8 @@ class _CreateNeedState extends State<CreateNeed> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
-                  children: [
+                Row(
+                  children: const [
                     Icon(Icons.check_circle, size: 16, color: Colors.greenAccent),
                     SizedBox(width: 6),
                     Text(
@@ -1084,32 +906,11 @@ class _CreateNeedState extends State<CreateNeed> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                // ── Selected skills shown as removable chips ─────────────────
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: _selectedSkills.map((skill) {
-                    final isCustom = !_availableSkills.contains(skill);
-                    return Chip(
-                      label: Text(
-                        skill,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 12),
-                      ),
-                      backgroundColor: isCustom
-                          ? Colors.purple.shade700
-                          : Colors.blue.shade700,
-                      deleteIconColor: Colors.white70,
-                      deleteIcon: const Icon(Icons.close, size: 14),
-                      onDeleted: () {
-                        setState(() => _selectedSkills.remove(skill));
-                      },
-                      padding: EdgeInsets.zero,
-                      labelPadding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 0),
-                    );
-                  }).toList(),
+                const SizedBox(height: 6),
+                Text(
+                  _selectedSkills.join(', '),
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 13),
                 ),
               ],
             ),
@@ -1226,6 +1027,7 @@ class _CreateNeedState extends State<CreateNeed> {
               ),
               const SizedBox(height: 20),
 
+              // Role dropdown
               DropdownButtonFormField<String>(
                 value: _selectedRole,
                 dropdownColor: Colors.white,
@@ -1287,6 +1089,7 @@ class _CreateNeedState extends State<CreateNeed> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
 
+              // Back button
               GestureDetector(
                 onTap: () => setState(() => _step = 1),
                 child: const Row(
@@ -1301,6 +1104,7 @@ class _CreateNeedState extends State<CreateNeed> {
               ),
               const SizedBox(height: 16),
 
+              // Username field (all roles)
               TextFormField(
                 controller: _username,
                 onChanged: _onUsernameChanged,
@@ -1333,11 +1137,13 @@ class _CreateNeedState extends State<CreateNeed> {
               ),
               const SizedBox(height: 20),
 
+              // ── MENTOR: show skill picker ──────────────────────────────────
               if (_isMentor) ...[
                 _buildSkillPicker(),
                 const SizedBox(height: 20),
               ],
 
+              // ── STUDENT: show mentor picker + learning need ────────────────
               if (!_isMentor) ...[
                 Row(children: [
                   Expanded(child: Divider(color: Colors.grey.shade300)),
@@ -1375,6 +1181,7 @@ class _CreateNeedState extends State<CreateNeed> {
 
               const SizedBox(height: 16),
 
+              // Submit button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
